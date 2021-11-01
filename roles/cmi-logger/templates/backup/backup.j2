@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# vim: set ft=bash ts=2 sw=2 et:
+
+set -euo pipefail
+
+influxdb() {
+  local temp
+  temp="$(mktemp --directory)"
+
+  docker run \
+         --rm \
+         --name influxdb-backup \
+         --network 'container:{{ service_name }}_influxdb_1' \
+         --volume "$temp:/backups"  \
+         'influxdb:{{ influxdb_version }}' \
+         influxd backup \
+                -portable \
+                -host influxdb:8088 \
+                -database '{{ influxdb_database }}' \
+                /backups
+
+  local timestamp
+  timestamp="$(date +'%Y-%m-%dT%H-%M-%S')"
+
+  mkdir --parents -- "{{ root }}/backup/backups/influxdb"
+
+  tar -czf \
+      "{{ root }}/backup/backups/influxdb/$timestamp.tar.gz" \
+      --directory "$temp" \
+      .
+
+  rm -rf -- "$temp"
+}
+
+grafana-build-backup() {
+  local image="${1?Need image}"
+
+  local temp
+  temp="$(mktemp --directory)"
+
+  pushd "$temp" > /dev/null
+
+  git clone https://github.com/ysde/grafana-backup-tool.git .
+
+  # No armhf-based variant available.
+  docker build \
+         --tag "$image" \
+         --label local=true \
+         .
+
+  popd > /dev/null
+  rm -rf -- "$temp"
+}
+
+grafana() {
+  local image='ysde/docker-grafana-backup-tool:armhf'
+
+  if [[ -z "$(docker images --filter=reference="$image" --quiet)" ]]; then
+    grafana-build-backup "$image"
+  fi
+
+  local temp
+  temp="$(mktemp --directory)"
+
+  chown 1337:1337 -- "$temp"
+
+  docker run \
+         --rm \
+         --name grafana-backup \
+         --env 'GRAFANA_URL=http://grafana:3000' \
+         --env 'GRAFANA_TOKEN={{ grafana_backup_api_key }}' \
+         --env 'GRAFANA_ADMIN_ACCOUNT={{ grafana_backup_admin_user }}' \
+         --env 'GRAFANA_ADMIN_PASSWORD={{ grafana_backup_admin_password }}' \
+         --env 'TZ=Europe/Berlin' \
+         --network 'container:{{ service_name }}_grafana_1' \
+         --volume "$temp:/opt/grafana-backup-tool/_OUTPUT_"  \
+         "$image"
+
+  mkdir --parents -- "{{ root }}/backup/backups/grafana"
+
+  find "$temp" \
+      -name "*.tar.gz" \
+      -execdir mv '{}' '{{ root }}/backup/backups/grafana' \;
+
+  rm -rf -- "$temp"
+}
+
+cleanup() {
+  local delete_old_backups
+  # Delete files older than {{ logger_backup_cleanup_keep }} days.
+  # shellcheck disable=SC2016,SC1004
+  delete_old_backups='
+    find "{}" \
+        -type f \
+        -printf "%Ts\t%p\n" |
+      sort --numeric-sort --reverse |
+      tail --lines="+{{ logger_backup_cleanup_keep + 1}}" |
+      cut --fields=2- |
+      while IFS= read -r file; do
+        printf "Removing old backup %s\n" "$file"
+        rm -f -- "$file"
+      done
+  '
+
+  # Iterate each direct subdirectory of backups.
+  find '{{ root }}/backup/backups' \
+      -mindepth 1 \
+      -maxdepth 1 \
+      -type d \
+      -execdir sh -c "$delete_old_backups" \;
+}
+
+{% if logger_backup_rsync_target | default('', true) | length %}
+rsync() {
+  command rsync --rsh ssh \
+                --numeric-ids \
+                --archive \
+                --verbose \
+                --progress \
+                --partial \
+                --compress \
+                --human-readable \
+                --delete \
+                '{{ root }}/backup/backups/' \
+                '{{ logger_backup_rsync_target }}'
+}
+{% endif %}
+
+influxdb
+grafana
+cleanup
+{% if logger_backup_rsync_target | default('', true) | length %}
+rsync
+{% endif %}

@@ -1,0 +1,17 @@
+- import_tasks: copy-templates.yml
+  vars:
+    directory: ../templates
+
+- name: Symlink InfluxDB rename script
+  become: true
+  file:
+    state: link
+    src: "{{ root }}/bin/influx-rename"
+    path: /usr/local/bin/influx-rename
+
+- name: Start service
+  community.docker.docker_compose:
+    project_src: "{{ root }}"
+    project_name: "{{ service_name }}"
+    state: present
+    build: true

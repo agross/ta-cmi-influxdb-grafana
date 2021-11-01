@@ -1,0 +1,33 @@
+- name: Install packages
+  ansible.builtin.include_tasks: syno-package.yml
+  vars:
+    package: "{{ item }}"
+  loop: "{{ syno_packages }}"
+
+- name: Check if pip3 is available
+  ansible.builtin.command:
+    argv:
+      - "{{ python3 }}"
+      - -m
+      - pip
+      - -V
+  register: pip3_available
+  failed_when: false
+  changed_when: false
+
+- name: Install pip3
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ python3 }}"
+      - -m
+      - ensurepip
+  when: pip3_available.rc != 0
+
+- name: Install packages required to manage docker from ansible for python3
+  become: true
+  ansible.builtin.pip:
+    executable: /var/packages/py3k/target/usr/local/bin/pip3
+    name: "{{ pip3_modules }}"
+  vars:
+    ansible_python_interpreter: "{{ python3 }}"

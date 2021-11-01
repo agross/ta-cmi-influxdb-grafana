@@ -1,0 +1,14 @@
+cmi_host: cmi
+cmi_user: "{{ vault_cmi_user }}"
+cmi_password: "{{ vault_cmi_password }}"
+
+# The API key needs to have the "Admin" role.
+grafana_backup_api_key: "{{ vault_grafana_backup_api_key }}"
+grafana_backup_admin_user: "{{ vault_grafana_backup_admin_user }}"
+grafana_backup_admin_password: "{{ vault_grafana_backup_admin_password }}"
+
+# grafana_root_url: "{{ vault_grafana_root_url }}"
+
+# grafana_smtp_host: "{{ vault_grafana_smtp_host }}"
+# grafana_smtp_user: "{{ vault_grafana_smtp_user }}"
+# grafana_smtp_password: "{{ vault_grafana_smtp_password }}"

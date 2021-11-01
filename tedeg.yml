@@ -1,0 +1,11 @@
+- hosts: tedeg_python2
+  become: false
+  roles:
+    - name: docker
+      tags: docker
+
+- hosts: tedeg
+  become: false
+  roles:
+    - name: cmi-logger
+      tags: cmi-logger

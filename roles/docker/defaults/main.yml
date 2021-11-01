@@ -1,0 +1,11 @@
+synopkg: /usr/syno/bin/synopkg
+
+python3: /usr/local/bin/python3
+
+syno_packages:
+  - Docker
+  - py3k # Python3
+
+pip3_modules:
+  - docker
+  - docker-compose

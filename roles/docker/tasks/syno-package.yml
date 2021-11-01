@@ -1,0 +1,19 @@
+- name: Check if {{ package }} is installed
+  ansible.builtin.command:
+    argv:
+      - "{{ synopkg }}"
+      - status
+      - "{{ package }}"
+  register: package_status
+  # rc == 4, package is installed, but stopped.
+  failed_when: package_status.rc != 0 and package_status.rc != 4
+  changed_when: false
+
+- name: Install package {{ package }}
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "{{ synopkg }}"
+      - install
+      - "{{ package }}"
+  when: '"No such package" in package_status.stdout'

@@ -1,0 +1,11 @@
+service_name: cmi-logger
+
+root: /volume1/docker/{{ service_name }}
+
+influxdb_version: 1.8-alpine
+influxdb_database: cmi
+
+logger_backup_cleanup_keep: 7
+
+# No rsync after backup.
+logger_backup_rsync_target:

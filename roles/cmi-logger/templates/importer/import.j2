@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+json=/tmp/cmi.json
+data=/tmp/data
+database={{ influxdb_database | mandatory | quote }}
+
+# Create database unless it exists.
+curl --fail-with-body \
+     --request POST \
+     --data-urlencode "q=CREATE DATABASE $database" \
+     influxdb:8086/query
+
+while : ; do
+  curl --output "$json" \
+       --user '{{ cmi_user | mandatory }}:{{ cmi_password | mandatory }}' \
+       'http://{{ cmi_host | mandatory }}/INCLUDE/api.cgi?jsonnode=1&jsonparam=I,O,D,Sg,La,Ld'
+
+  # Ignore CMI timestamp since it is in local time, not UTC, which is what
+  # InfluxDB expects.
+
+  : > "$data"
+
+  printf 'Außentemperatur,host={{ cmi_host }},type=input,unit=C value=%s\n' \
+         "$(jq .Data.Inputs[0].Value.Value -- "$json")" \
+         >> "$data"
+
+  printf 'Vorlauftemperatur\ Heizkreis,host={{ cmi_host }},type=input,unit=C value=%s\n' \
+         "$(jq .Data.Inputs[1].Value.Value -- "$json")" \
+         >> "$data"
+
+  printf 'Heizkreispumpe,host={{ cmi_host }},type=output,unit=boolean value=%s\n' \
+         "$(jq '.Data.Outputs[0].Value.Value == 1' -- "$json")" \
+         >> "$data"
+
+  printf 'Anforderung\ Wärmepumpe,host={{ cmi_host }},type=output,unit=boolean value=%s\n' \
+         "$(jq '.Data.Outputs[1].Value.Value == 1' -- "$json")" \
+         >> "$data"
+
+  curl --fail-with-body \
+       --request POST \
+       --data-binary "@$data" \
+       "influxdb:8086/api/v2/write?bucket=$database/&precision=s"
+
+  sleep 60
+done
