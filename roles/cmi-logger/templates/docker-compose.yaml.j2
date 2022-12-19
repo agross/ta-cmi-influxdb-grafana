@@ -5,10 +5,10 @@ volumes:
   grafana-data:
 
 services:
-  importer:
-    image: importer
+  cmi-importer:
+    image: cmi-importer
     build:
-      context: {{ root }}/importer
+      context: {{ root }}/cmi-importer
     restart: always
     depends_on:
       influxdb:
