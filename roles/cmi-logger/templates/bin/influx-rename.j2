@@ -7,10 +7,10 @@ to="${2?Need measurement that is copied to}"
 
 docker exec \
        '{{ service_name }}_influxdb_1' \
-       influx -database '{{ influxdb_database }}' \
+       influx -database '{{ influxdb_database_cmi }}' \
               -execute "SELECT * INTO \"$to\" FROM \"$from\""
 
 docker exec \
        '{{ service_name }}_influxdb_1' \
-       influx -database '{{ influxdb_database }}' \
+       influx -database '{{ influxdb_database_cmi }}' \
               -execute "DROP MEASUREMENT \"$from\""

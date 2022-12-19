@@ -16,7 +16,7 @@ influxdb() {
          influxd backup \
                 -portable \
                 -host influxdb:8088 \
-                -database '{{ influxdb_database }}' \
+                -database '{{ influxdb_database_cmi }}' \
                 /backups
 
   local timestamp

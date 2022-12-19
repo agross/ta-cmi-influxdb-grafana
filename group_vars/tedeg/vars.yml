@@ -2,6 +2,9 @@ cmi_host: cmi
 cmi_user: "{{ vault_cmi_user }}"
 cmi_password: "{{ vault_cmi_password }}"
 
+airq_sensor: 192.168.0.99
+airq_password: "{{ vault_airq_password }}"
+
 # The API key needs to have the "Admin" role.
 grafana_backup_api_key: "{{ vault_grafana_backup_api_key }}"
 grafana_backup_admin_user: "{{ vault_grafana_backup_admin_user }}"

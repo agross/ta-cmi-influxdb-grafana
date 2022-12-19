@@ -1,0 +1,52 @@
+#!/usr/bin/env sh
+
+# vim: set ft=jinja-shell ts=2 sw=2 et:
+
+set -eu
+
+[ -n "$AIRQ_SENSOR" ] || { printf 'Need AIRQ_SENSOR\n'; exit 1; }
+[ -n "$AIRQ_PASSWORD" ] || { printf 'Need AIRQ_PASSWORD\n'; exit 1; }
+
+json=/tmp/airq.json
+data=/tmp/data
+database={{ influxdb_database_airq | mandatory | quote }}
+
+# Create database unless it exists.
+curl --fail-with-body \
+     --request POST \
+     --data-urlencode "q=CREATE DATABASE $database" \
+     influxdb:8086/query
+
+while : ; do
+  : > "$data"
+
+  ./airq.py "$AIRQ_SENSOR" \
+            "$AIRQ_PASSWORD" > "$json"
+
+  timestamp=$(jq --raw-output .timestamp -- "$json")
+  device=$(jq --raw-output .DeviceID -- "$json")
+
+  for key in $(jq --raw-output 'keys[]' -- "$json"); do
+    [ "$key" == timestamp ] && continue
+    [ "$key" == DeviceID ] && continue
+    [ "$key" == Status ] && continue
+
+    printf '%s,device=%s,tag=%s %s %s\n' \
+           "$key" \
+           "$device" \
+           "${TAG:-}" \
+           "$(jq --raw-output ".$key | if type == \"array\" then \"value=\" + (.[0] | tostring) + \",deviation=\" + (.[1] | tostring) else \"value=\"+ (. | tostring) end" -- "$json")" \
+           "$timestamp" \
+           >> "$data"
+  done
+
+  cat "$data"
+
+  curl --fail-with-body \
+       --request POST \
+       --data-binary "@$data" \
+       "influxdb:8086/api/v2/write?bucket=$database/&precision=ms"
+
+  printf 'Wrote to InfluxDB, sleeping for 60s\n'
+  sleep 60
+done

@@ -3,7 +3,8 @@ service_name: cmi-logger
 root: /volume1/docker/{{ service_name }}
 
 influxdb_version: 1.8-alpine
-influxdb_database: cmi
+influxdb_database_cmi: cmi
+influxdb_database_airq: airq
 
 logger_backup_cleanup_keep: 7
 

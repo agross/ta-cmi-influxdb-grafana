@@ -14,6 +14,19 @@ services:
       influxdb:
         condition: service_healthy
 
+  airq-importer:
+    image: airq-importer
+    build:
+      context: {{ root }}/airq-importer
+    restart: always
+    environment:
+      AIRQ_SENSOR: {{ airq_sensor }}
+      AIRQ_PASSWORD: {{ airq_password }}
+      TAG: Flur
+    depends_on:
+      influxdb:
+        condition: service_healthy
+
   influxdb:
     image: influxdb:{{ influxdb_version }}
 

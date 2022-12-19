@@ -6,7 +6,7 @@ set -euo pipefail
 
 json=/tmp/cmi.json
 data=/tmp/data
-database={{ influxdb_database | mandatory | quote }}
+database={{ influxdb_database_cmi | mandatory | quote }}
 
 # Create database unless it exists.
 curl --fail-with-body \
